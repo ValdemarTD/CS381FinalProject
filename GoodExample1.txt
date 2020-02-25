@@ -1,0 +1,20 @@
+1
+2
+==
+12
+BranchIfTrue 
+"Hello world! Math result: "
+cur
+17
++
++
+echo
+"hello_world.txt"
+fileOut
+True
+2
+BranchIfTrue 
+"This line will never print to the screen"
+echo
+"End of program"
+echo
