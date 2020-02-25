@@ -1,5 +1,5 @@
 # README
-Group members: Eric Prather, [Your Names Here]
+Group members: Eric Prather, Caleb Shultz, [Your Names Here]
 
 This is the initial readme
 Google Doc:
