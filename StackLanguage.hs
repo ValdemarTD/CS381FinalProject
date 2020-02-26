@@ -11,7 +11,7 @@ import Data.Char
 ---------------------
 -- Data
 -- Haskell defined: Int, Bool, String
-data Val = Int Int | Bool Bool | String String
+data Primitive = Int Int | Bool Bool | String String
     deriving (Eq, Show)
 
 -- Control
@@ -40,13 +40,13 @@ data Expr = Nop -- No operation
     
 
 -- The stack is a linked list
-data Stack = Node Val Stack
+data Stack = Node Primitive Stack
     | End
     deriving(Show)
 
 -- These instructions are pushed one at a time to the stack and then evaluated.
 data ProgItem = Expr Expr
-    | Val Val
+    | Val Primitive
     | Function Prog
     deriving(Show)
 
@@ -92,3 +92,20 @@ doInstruction :: Expr -> Stack -> Stack
 doInstruction Swap (Node lhs (Node rhs oldStack)) = (Node rhs (Node lhs oldStack))
 doInstruction Swap (Node lhs End) = undefined
 -- So on and so forth
+
+-- Arithmetic --
+-- Arithmetic is not always communicative, even when it is with basic math.
+-- All three primitives are supported by all basic aritmetic operations
+-- Specific relationships between primitives 
+
+addPrimitives :: Primitive -> Primitive -> Primitive
+addPrimitives (Int x) (Int y) = undefined
+addPrimitives (Int x) (Bool y) = undefined
+addPrimitives (Int x) (String y) = undefined
+addPrimitives (String x) (Int y) = undefined
+addPrimitives (String x) (Bool y) = undefined
+addPrimitives (String x) (String y) = undefined
+addPrimitives (Bool x) (Int y) = undefined
+addPrimitives (Bool x) (Bool y) = undefined
+addPrimitives (Bool x) (String y) = undefined
+
