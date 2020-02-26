@@ -7,6 +7,14 @@ import GHC.Types (IO (..))
 import Data.Char
 
 ---------------------
+--    Constants    --
+---------------------
+whitespace = [' ', '\t', '\n', '\r']
+newline = ['\n']
+-- truthful = [0, ""] -- These are logical "true"
+                      -- For non-bool primatives
+
+---------------------
 -- Abstract Syntax --
 ---------------------
 -- Data
@@ -98,35 +106,144 @@ doInstruction Swap (Node lhs End) = undefined
 -- All three primitives are supported by all basic aritmetic operations
 -- Specific relationships between primitives 
 
+-- | This function adds two primitives together as per the language 
+-- specifications in the design document
+--
+-- Examples:
+-- 
+-- >>> addPrimitives (Int 2) (Int 4)
+-- (Int 6)
+--
+-- >>> addPrimitives (Int 2) (Bool True)
+-- (Int 3)
+--
+-- >>> addPrimitives (Int 2) (String "nonEmpty")
+-- (Int 3)
+--
+-- >>> addPrimitives (Int 2) (String "")
+-- (Int 2)
+-- 
+-- Note: We use the traditional "0 = true" in this language.
+--
+-- >>> addPrimitives (Bool False) (Int 0)
+-- (Bool True)
+--
+-- >>> addPrimitives (Bool False) (Bool True)
+-- (Bool True)
+--
+-- >>> addPrimitives (Bool False) (Bool True)
+-- (Bool True)
+--
+-- >>> addPrimitives (String "See: ") (Int 39)
+-- (String "See: 39")
+--
+-- >>> addPrimitives (String "Logical True: ") (Bool True)
+-- (String "Logical True: True")
+--
+-- >>> addPrimitives (String "abc") (String "def")
+-- (String "abcdef")
+--
 addPrimitives :: Primitive -> Primitive -> Primitive
 addPrimitives (Int x) (Int y) = undefined
 addPrimitives (Int x) (Bool y) = undefined
 addPrimitives (Int x) (String y) = undefined
-addPrimitives (String x) (Int y) = undefined
-addPrimitives (String x) (Bool y) = undefined
-addPrimitives (String x) (String y) = undefined
 addPrimitives (Bool x) (Int y) = undefined
 addPrimitives (Bool x) (Bool y) = undefined
 addPrimitives (Bool x) (String y) = undefined
+addPrimitives (String x) (Int y) = undefined
+addPrimitives (String x) (Bool y) = undefined
+addPrimitives (String x) (String y) = undefined
+
+-- | This function subtracts two primitives together as per the language 
+-- specifications in the design document
+--
+-- Examples:
+-- 
+-- >>> subtractPrimitives (Int 2) (Int 4)
+-- (Int -2)
+--
+-- >>> subtractPrimitives (Int 3) (Bool True)
+-- (Int 2)
+--
+-- >>> subtractPrimitives (Int 7) (String "aaa")
+-- (Int 4)
+--
+-- >>> subtractPrimitives (Bool True) (Int 17)
+-- (Bool false)
+--
+-- >>> subtractPrimitives (Bool True) (Bool False)
+-- (Bool False)
+--
+-- >>> subtractPrimitives (Bool True) (String "notEmpty")
+-- (Bool False)
+--
+-- >>> subtractPrimitives (String "foobar") (Int 3)
+-- (String "foo")
+--
+-- >>> subtractPrimitives (String "foobar \t") (Bool False)
+-- (String "foobar")
+--
+-- >>> subtractPrimitives (String "foobar") (String "o")
+-- (String "fbar")
+--
 
 subtractPrimitives :: Primitive -> Primitive -> Primitive
 subtractPrimitives (Int x) (Int y) = undefined
 subtractPrimitives (Int x) (Bool y) = undefined
 subtractPrimitives (Int x) (String y) = undefined
-subtractPrimitives (String x) (Int y) = undefined
-subtractPrimitives (String x) (Bool y) = undefined
-subtractPrimitives (String x) (String y) = undefined
 subtractPrimitives (Bool x) (Int y) = undefined
 subtractPrimitives (Bool x) (Bool y) = undefined
 subtractPrimitives (Bool x) (String y) = undefined
+subtractPrimitives (String x) (Int y) = undefined
+subtractPrimitives (String x) (Bool y) = undefined
+subtractPrimitives (String x) (String y) = undefined
+
+-- | This function multiplies two primitives together as per the language 
+-- specifications in the design document
+--
+-- Examples:
+-- 
+-- >>> multiplyPrimitives (Int 3) (Int 4)
+-- (Int 12)
+-- 
+-- >>> multiplyPrimitives (Int 3) (String "asdf")
+-- (Int 12)
+-- 
+-- >>> multiplyPrimitives (Int 3) (String "10")
+-- (Int 30)
+--
+-- >>> multiplyPrimitives (Int 3) (Bool False)
+-- (Int 3)
+-- 
+-- >>> multiplyPrimitives (Int 3) (Bool True)
+-- (Int 0)
+-- 
+-- >>> multiplyPrimitives (Bool True) (Int 0)
+-- (Bool False)
+-- 
+-- >>> multiplyPrimitives (Bool True) (Bool True)
+-- (Bool False)
+-- 
+-- >>> multiplyPrimitives (Bool True) (String "")
+-- (Bool False)
+--
+-- >>> multiplyPrimitives (String "foobar") (Int 2)
+-- (String "foobarfoobar")
+-- 
+-- >>> multiplyPrimitives (String "f o o\tb a\tr") (Bool True)
+-- (String "foobar")
+-- 
+-- >>> multiplyPrimitives (String "abc") (String "def")
+-- (String "adbecf")
+-- 
 
 multiplyPrimitives :: Primitive -> Primitive -> Primitive
 multiplyPrimitives (Int x) (Int y) = undefined
 multiplyPrimitives (Int x) (Bool y) = undefined
 multiplyPrimitives (Int x) (String y) = undefined
-multiplyPrimitives (String x) (Int y) = undefined
-multiplyPrimitives (String x) (Bool y) = undefined
-multiplyPrimitives (String x) (String y) = undefined
 multiplyPrimitives (Bool x) (Int y) = undefined
 multiplyPrimitives (Bool x) (Bool y) = undefined
 multiplyPrimitives (Bool x) (String y) = undefined
+multiplyPrimitives (String x) (Int y) = undefined
+multiplyPrimitives (String x) (Bool y) = undefined
+multiplyPrimitives (String x) (String y) = undefined
