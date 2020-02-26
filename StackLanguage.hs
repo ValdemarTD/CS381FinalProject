@@ -109,3 +109,24 @@ addPrimitives (Bool x) (Int y) = undefined
 addPrimitives (Bool x) (Bool y) = undefined
 addPrimitives (Bool x) (String y) = undefined
 
+subtractPrimitives :: Primitive -> Primitive -> Primitive
+subtractPrimitives (Int x) (Int y) = undefined
+subtractPrimitives (Int x) (Bool y) = undefined
+subtractPrimitives (Int x) (String y) = undefined
+subtractPrimitives (String x) (Int y) = undefined
+subtractPrimitives (String x) (Bool y) = undefined
+subtractPrimitives (String x) (String y) = undefined
+subtractPrimitives (Bool x) (Int y) = undefined
+subtractPrimitives (Bool x) (Bool y) = undefined
+subtractPrimitives (Bool x) (String y) = undefined
+
+multiplyPrimitives :: Primitive -> Primitive -> Primitive
+multiplyPrimitives (Int x) (Int y) = undefined
+multiplyPrimitives (Int x) (Bool y) = undefined
+multiplyPrimitives (Int x) (String y) = undefined
+multiplyPrimitives (String x) (Int y) = undefined
+multiplyPrimitives (String x) (Bool y) = undefined
+multiplyPrimitives (String x) (String y) = undefined
+multiplyPrimitives (Bool x) (Int y) = undefined
+multiplyPrimitives (Bool x) (Bool y) = undefined
+multiplyPrimitives (Bool x) (String y) = undefined
