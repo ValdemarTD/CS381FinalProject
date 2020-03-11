@@ -23,20 +23,20 @@ data Primitive = Int Int | Bool Bool | String String
     deriving (Eq, Show)
 
 -- Control
--- An expression which evaluates using subsequent items
--- on the stack
-data Expr = Nop -- No operation
-    | Add -- Add ints, bools, and strings (even interoperable- think concatenation)
-    | Sub -- See above
-    | Mul -- blah blah blah
+-- An instruction which defines how an expression will evaluate
+data Instr = Nop -- No operation
+    | Hold
+    | Release
+    | Lbl
+    | End
+    | Inv
+    
+    -- IO
     | FileIn -- Parses the previous item on the stack
-    | FileOut -- Writes the item two items ago to the stack using the filename
-              -- at the previous item. e.g. 3 "foo.txt" FileOut writes 3 to 
-              -- foo.txt. Then pops.
-    | Dump -- Writes the whole stack to a file. Then pops.
+    | FileOut -- Writes the item two items ago to the fs using the filename
+              -- at the previous item.
     | Echo -- Writes the previous item on the stack, then pops.
-    | BranchIfTrue -- Jumps "pc-1" items along the stack if "pc-2" is true.
-    | BranchIfFalse -- What it says on the tin
+    
     
     -- The following stack operations are from forth.com
     | Swap -- Swaps the previous two items on the stack
@@ -45,17 +45,20 @@ data Expr = Nop -- No operation
     | Rot -- Rotates the previous three items right
     | Drop -- Drops the top item of the stack
     deriving(Show)
-    
+
+data Expr = Raw Instr -- Instruction by itself
+    | Flagged Instr Bool Bool -- Modified instruction (skip flag) (nopop self flag) (nopop operands flag)
+    deriving(Show)
 
 -- The stack is a linked list
-data Stack = Node Primitive Stack
-    | End
+data Stack = Node Stack (Either Primitive Expr) Stack
+    | Bottom
+    | Top
     deriving(Show)
 
 -- These instructions are pushed one at a time to the stack and then evaluated.
 data ProgItem = Expr Expr
     | Val Primitive
-    | Function Prog
     deriving(Show)
 
 data Prog = Prog [ProgItem]
@@ -85,21 +88,17 @@ loadFile filename = case (readFile filename) of
     -- IO Error -> Exec 0 [Nop] 
 
 ---------------------
+--     Macros      --
+---------------------
+-- These commands, when read, expand to other commands.
+
+
+---------------------
 --    Semantics    --
 ---------------------
 
 -- Runs an entire program until there are no instructions left.
-run :: Prog -> Stack -> Prog
-run (Prog []) _ = Prog [] -- End state.
-run (Prog (x:xs)) oldStack = case x of
-    (Expr progExpression) -> (run (Prog xs) (doInstruction progExpression oldStack))
-    (Val progVal) -> (run (Prog xs) (Node progVal oldStack))
 
--- Performs an expression on the stack
-doInstruction :: Expr -> Stack -> Stack
-doInstruction Swap (Node lhs (Node rhs oldStack)) = (Node rhs (Node lhs oldStack))
-doInstruction Swap (Node lhs End) = undefined
--- So on and so forth
 
 -- Arithmetic --
 -- Arithmetic is not always communicative, even when it is with basic math.
