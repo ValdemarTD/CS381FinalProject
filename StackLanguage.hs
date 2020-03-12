@@ -5,6 +5,12 @@ module StackLanguage where
 import System.Environment
 import GHC.Types (IO (..))
 import Data.Char
+import Data.Bool
+import Data.List
+import System.IO
+import Control.Monad
+import System.IO.Unsafe -- IO was never explained in class so I will do this.
+import Data.List.Split -- Install with cabal
 
 ---------------------
 --    Constants    --
@@ -23,20 +29,20 @@ data Primitive = Int Int | Bool Bool | String String
     deriving (Eq, Show)
 
 -- Control
--- An expression which evaluates using subsequent items
--- on the stack
-data Expr = Nop -- No operation
-    | Add -- Add ints, bools, and strings (even interoperable- think concatenation)
-    | Sub -- See above
-    | Mul -- blah blah blah
+-- An instruction which defines how an expression will evaluate
+data Instr = Nop -- No operation
+    | Hold
+    | Release
+    | Lbl
+    | End
+    | Inv
+    
+    -- IO
     | FileIn -- Parses the previous item on the stack
-    | FileOut -- Writes the item two items ago to the stack using the filename
-              -- at the previous item. e.g. 3 "foo.txt" FileOut writes 3 to 
-              -- foo.txt. Then pops.
-    | Dump -- Writes the whole stack to a file. Then pops.
+    | FileOut -- Writes the item two items ago to the fs using the filename
+              -- at the previous item.
     | Echo -- Writes the previous item on the stack, then pops.
-    | BranchIfTrue -- Jumps "pc-1" items along the stack if "pc-2" is true.
-    | BranchIfFalse -- What it says on the tin
+    
     
     -- The following stack operations are from forth.com
     | Swap -- Swaps the previous two items on the stack
@@ -45,21 +51,24 @@ data Expr = Nop -- No operation
     | Rot -- Rotates the previous three items right
     | Drop -- Drops the top item of the stack
     deriving(Show)
-    
+
+data Expr = Raw Instr -- Instruction by itself
+    | Flagged Instr Bool Bool Bool -- Modified instruction (skip flag) (nopop self flag) (nopop operands flag)
+    deriving(Show)
 
 -- The stack is a linked list
-data Stack = Node Primitive Stack
-    | End
+data Stack = Node Stack (Either Primitive Expr) Stack
+    | Bottom
+    | Top
     deriving(Show)
 
 -- These instructions are pushed one at a time to the stack and then evaluated.
 data ProgItem = Expr Expr
     | Val Primitive
-    | Function Prog
     deriving(Show)
 
-data Prog = Prog [ProgItem]
-    deriving(Show)
+type Prog = [ProgItem]
+    --deriving(Show)
 
 
 -- Parsing
@@ -73,33 +82,68 @@ data Prog = Prog [ProgItem]
 -- They should never be called by the language.
 -- They are just for loading scripts and stuff
 
+
+
+-- Converts a list of words into a program
+-- Currently case sensitive; needs to be made _not_ case sensitive.
+-- TODO: Add a case allowing escape sequences to avoid commands.
+-- TODO: Allow escape characters for string literals
+-- TODO: Add a case to use flagged commands, eg in the following doctest:
+-- 
+-- >>> wordsToProg ["Echo&;"]
+-- (Flagged Echo True True False) 
+--
+wordsToProg :: [String] -> Prog
+wordsToProg ("ECHO":rest) = [Expr (Raw Echo)] ++ (wordsToProg rest)
+wordsToProg (str:rest) = [Val (String str)] ++ (wordsToProg rest)
+wordsToProg [] = [] -- Base case: all words consumed
+
+splitStrsToProg :: [String] -> Prog
+splitStrsToProg (a:b:xs) = (wordsToProg (words a)) ++ (wordsToProg [b])++ (splitStrsToProg xs)
+-- The following two patterns should never be matched
+splitStrsToProg (illegalLeft:illegalRight) = (strToProg illegalLeft) ++ (splitStrsToProg illegalRight)
+splitStrsToProg other = (wordsToProg other)
+
+
 -- Converts a string spanning several lines (and commands) to 
 -- Haskell "Control" data types.
-strToProg = undefined
+strToProg :: (String) -> Prog
+strToProg "" = []
+strToProg other = case (splitOn "\"" other) of
+    (a:b:xs) ->  (strToProg a) ++ (wordsToProg [b]) ++ (splitStrsToProg xs)
+    (b:xs) ->  wordsToProg (words b) ++ (splitStrsToProg xs)
+    --[other_other] -> wordsToProg (words other_other)
 
 -- Reads a file and "compiles" it as a StackLang program
+-- TODO: Using unsafePerformIO is very bad practice in Haskell.
+-- However, I will do it for now after getting frustrated with IO
+-- for about an hour. If somebody changes this, it will probably
+-- save some time on the final.
 loadFile :: String -> Prog
-loadFile filename = case (readFile filename) of
-    IO str -> strToProg str
+loadFile filename = strToProg (unsafePerformIO . readFile $ filename)
+        
+    --(IO error) -> []
     -- Add error patterns here, example:
     -- IO Error -> Exec 0 [Nop] 
+
+
+
+---------------------
+--     Macros      --
+---------------------
+-- These commands, when read, expand to other commands.
+
 
 ---------------------
 --    Semantics    --
 ---------------------
 
--- Runs an entire program until there are no instructions left.
-run :: Prog -> Stack -> Prog
-run (Prog []) _ = Prog [] -- End state.
-run (Prog (x:xs)) oldStack = case x of
-    (Expr progExpression) -> (run (Prog xs) (doInstruction progExpression oldStack))
-    (Val progVal) -> (run (Prog xs) (Node progVal oldStack))
+-- Runs a statement in a program
+statement = undefined -- :: Expr -> Stack -> Stack
 
--- Performs an expression on the stack
-doInstruction :: Expr -> Stack -> Stack
-doInstruction Swap (Node lhs (Node rhs oldStack)) = (Node rhs (Node lhs oldStack))
-doInstruction Swap (Node lhs End) = undefined
--- So on and so forth
+-- Runs an entire program until there are no instructions left.
+run  = undefined -- :: Prog -> Prog
+
 
 -- Arithmetic --
 -- Arithmetic is not always communicative, even when it is with basic math.
