@@ -126,6 +126,8 @@ loadFile filename = strToProg (unsafePerformIO . readFile $ filename)
     -- Add error patterns here, example:
     -- IO Error -> Exec 0 [Nop] 
 
+
+
 ---------------------
 --     Macros      --
 ---------------------
@@ -136,7 +138,11 @@ loadFile filename = strToProg (unsafePerformIO . readFile $ filename)
 --    Semantics    --
 ---------------------
 
+-- Runs a statement in a program
+statement = undefined -- :: Expr -> Stack -> Stack
+
 -- Runs an entire program until there are no instructions left.
+run  = undefined -- :: Prog -> Prog
 
 
 -- Arithmetic --
