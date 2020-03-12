@@ -5,6 +5,12 @@ module StackLanguage where
 import System.Environment
 import GHC.Types (IO (..))
 import Data.Char
+import Data.Bool
+import Data.List
+import System.IO
+import Control.Monad
+import System.IO.Unsafe -- IO was never explained in class so I will do this.
+import Data.List.Split -- Install with cabal
 
 ---------------------
 --    Constants    --
@@ -47,7 +53,7 @@ data Instr = Nop -- No operation
     deriving(Show)
 
 data Expr = Raw Instr -- Instruction by itself
-    | Flagged Instr Bool Bool -- Modified instruction (skip flag) (nopop self flag) (nopop operands flag)
+    | Flagged Instr Bool Bool Bool -- Modified instruction (skip flag) (nopop self flag) (nopop operands flag)
     deriving(Show)
 
 -- The stack is a linked list
@@ -61,8 +67,8 @@ data ProgItem = Expr Expr
     | Val Primitive
     deriving(Show)
 
-data Prog = Prog [ProgItem]
-    deriving(Show)
+type Prog = [ProgItem]
+    --deriving(Show)
 
 
 -- Parsing
@@ -76,14 +82,47 @@ data Prog = Prog [ProgItem]
 -- They should never be called by the language.
 -- They are just for loading scripts and stuff
 
+
+
+-- Converts a list of words into a program
+-- Currently case sensitive; needs to be made _not_ case sensitive.
+-- TODO: Add a case allowing escape sequences to avoid commands.
+-- TODO: Allow escape characters for string literals
+-- TODO: Add a case to use flagged commands, eg in the following doctest:
+-- 
+-- >>> wordsToProg ["Echo&;"]
+-- (Flagged Echo True True False) 
+--
+wordsToProg :: [String] -> Prog
+wordsToProg ("ECHO":rest) = [Expr (Raw Echo)] ++ (wordsToProg rest)
+wordsToProg (str:rest) = [Val (String str)] ++ (wordsToProg rest)
+wordsToProg [] = [] -- Base case: all words consumed
+
+splitStrsToProg :: [String] -> Prog
+splitStrsToProg (a:b:xs) = (wordsToProg (words a)) ++ (wordsToProg [b])++ (splitStrsToProg xs)
+-- The following two patterns should never be matched
+splitStrsToProg (illegalLeft:illegalRight) = (strToProg illegalLeft) ++ (splitStrsToProg illegalRight)
+splitStrsToProg other = (wordsToProg other)
+
+
 -- Converts a string spanning several lines (and commands) to 
 -- Haskell "Control" data types.
-strToProg = undefined
+strToProg :: (String) -> Prog
+strToProg "" = []
+strToProg other = case (splitOn "\"" other) of
+    (a:b:xs) ->  (strToProg a) ++ (wordsToProg [b]) ++ (splitStrsToProg xs)
+    (b:xs) ->  wordsToProg (words b) ++ (splitStrsToProg xs)
+    --[other_other] -> wordsToProg (words other_other)
 
 -- Reads a file and "compiles" it as a StackLang program
+-- TODO: Using unsafePerformIO is very bad practice in Haskell.
+-- However, I will do it for now after getting frustrated with IO
+-- for about an hour. If somebody changes this, it will probably
+-- save some time on the final.
 loadFile :: String -> Prog
-loadFile filename = case (readFile filename) of
-    IO str -> strToProg str
+loadFile filename = strToProg (unsafePerformIO . readFile $ filename)
+        
+    --(IO error) -> []
     -- Add error patterns here, example:
     -- IO Error -> Exec 0 [Nop] 
 
