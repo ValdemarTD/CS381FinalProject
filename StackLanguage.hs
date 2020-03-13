@@ -171,15 +171,13 @@ statement ex v1 v2 = case ex of
                                         (Raw Add) -> addPrimitives v1 v2
                                         (Raw Sub) -> subtractPrimitives v1 v2
                                         (Raw Mul) -> multiplyPrimitives v1 v2
-                                        (Raw Echo) -> show v1
+                                        (Raw Echo) -> String (show v1) -- this line threw an error
 
 
 -- Runs an entire program until there are no instructions left.
-run :: Prog -> Prog
-run p = case p of
-        [] -> []
-        x:y:z:xs -> case x of
-                    [] -> []
+run :: Prog -> Stack -> Prog
+run (x:xs) (Node lhs val rhs) = []
+run [] _ = [] -- End of program
 
 
 
@@ -320,7 +318,7 @@ subtractPrimitives (String x) y = case y of
                                                                                    (False) -> (String x)
 
 
-subtractPrimitives (String x) (Bool y) = undefined
+--subtractPrimitives (String x) (Bool y) = undefined -- This line was throwing a warning
 
 
 -- | This function multiplies two primitives together as per the language
