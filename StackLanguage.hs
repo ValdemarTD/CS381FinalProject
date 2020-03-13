@@ -99,9 +99,6 @@ type Prog = [ProgItem]
 -- (Flagged Echo True True False)
 --
 wordsToProg :: [String] -> Prog
---wordsToProg ("ECHO":rest) = [Expr (Raw Echo)] ++ (wordsToProg rest)
---wordsToProg (str:rest) = [Val (String str)] ++ (wordsToProg rest)
---wordsToProg [] = [] -- Base case: all words consumed
 
 wordsToProg s = case s of
                 ("ECHO":rest) -> [Expr (Raw Echo)] ++ (wordsToProg rest)
@@ -169,15 +166,20 @@ loadFile filename = strToProg (unsafePerformIO . readFile $ filename)
 ---------------------
 
 -- Runs a statement in a program
-statement = undefined -- :: Expr -> Stack -> Stack
+statement :: Expr -> Primitive -> Primitive -> Primitive
+statement ex v1 v2 = case ex of
+                                        (Raw Add) -> addPrimitives v1 v2
+                                        (Raw Sub) -> subtractPrimitives v1 v2
+                                        (Raw Mul) -> multiplyPrimitives v1 v2
+                                        (Raw Echo) -> show v1
 
 
 -- Runs an entire program until there are no instructions left.
 run :: Prog -> Prog
-run p = undefined --case p of
-        --[] -> []
-        --x:y:z:xs -> case x of
-        --            Expr e -> expression e []
+run p = case p of
+        [] -> []
+        x:y:z:xs -> case x of
+                    [] -> []
 
 
 
@@ -225,15 +227,32 @@ run p = undefined --case p of
 -- (String "abcdef")
 --
 addPrimitives :: Primitive -> Primitive -> Primitive
-addPrimitives (Int x) (Int y) = undefined
-addPrimitives (Int x) (Bool y) = undefined
-addPrimitives (Int x) (String y) = undefined
-addPrimitives (Bool x) (Int y) = undefined
-addPrimitives (Bool x) (Bool y) = undefined
-addPrimitives (Bool x) (String y) = undefined
-addPrimitives (String x) (Int y) = undefined
-addPrimitives (String x) (Bool y) = undefined
-addPrimitives (String x) (String y) = undefined
+
+addPrimitives (Int x) y = case y of
+                          (Int v) -> (Int (x + v))
+                          (Bool v) -> case v of
+                                      (True) -> (Int (x + 1))
+                                      (False) -> (Int x)
+                          (String v) -> case v of
+                                        "" -> (Int x)
+                                        _ -> (Int (x + 1))
+
+addPrimitives (Bool x) y = case y of
+                           (Int v) -> case v of
+                                      0 -> (Bool True)
+                                      _ -> (Bool x)
+                           (Bool v) -> (Bool (x && v))
+                           (String v) -> case v of
+                                         "" -> (Bool True)
+                                         _ -> (Bool x)
+
+addPrimitives (String x) y = case y of
+                             (Int v) -> (String (x ++ (show v)))
+                             (Bool v) -> case v of
+                                         (True) -> (String (x ++ "True"))
+                                         (False) -> (String (x ++ "False"))
+                             (String v) -> (String (x ++ v))
+
 
 -- | This function subtracts two primitives together as per the language
 -- specifications in the design document
@@ -269,15 +288,40 @@ addPrimitives (String x) (String y) = undefined
 --
 
 subtractPrimitives :: Primitive -> Primitive -> Primitive
-subtractPrimitives (Int x) (Int y) = undefined
-subtractPrimitives (Int x) (Bool y) = undefined
-subtractPrimitives (Int x) (String y) = undefined
-subtractPrimitives (Bool x) (Int y) = undefined
-subtractPrimitives (Bool x) (Bool y) = undefined
-subtractPrimitives (Bool x) (String y) = undefined
-subtractPrimitives (String x) (Int y) = undefined
+
+subtractPrimitives (Int x) y = case y of
+                               (Int v) -> (Int (x - v))
+                               (Bool v) -> case v of
+                                           (True) -> (Int (x - 1))
+                                           (False) -> (Int x)
+                               (String v) -> (Int (x - (length v)))
+
+subtractPrimitives (Bool x) y = case y of
+                                (Int v) -> case v of
+                                           0 -> (Bool (x && True))
+                                           _ -> (Bool False)
+                                (Bool v) -> (Bool (x && v))
+                                (String v) -> case v of
+                                              "" -> (Bool (x && True))
+                                              _ -> (Bool False)
+
+subtractPrimitives (String x) y = case y of
+                                  (Int v) -> case x of
+                                             (s:str) -> case (v < (length x)) of
+                                                        (True) -> (String ([s] ++ show (subtractPrimitives (String str) (Int v))))
+                                                        (False) -> (String [])
+                                  (String v) -> case x of
+                                                [] -> (String [])
+                                                (front:mid:end) -> case (v == [mid]) of
+                                                                   (True) -> (String ([front] ++ show (subtractPrimitives (String end) (String v))))
+                                                                   (False) -> case x of
+                                                                              (start:rest) -> case (v == [start]) of
+                                                                                   (True) -> (String (show (subtractPrimitives (String rest) y)))
+                                                                                   (False) -> (String x)
+
+
 subtractPrimitives (String x) (Bool y) = undefined
-subtractPrimitives (String x) (String y) = undefined
+
 
 -- | This function multiplies two primitives together as per the language
 -- specifications in the design document
@@ -319,12 +363,31 @@ subtractPrimitives (String x) (String y) = undefined
 --
 
 multiplyPrimitives :: Primitive -> Primitive -> Primitive
-multiplyPrimitives (Int x) (Int y) = undefined
-multiplyPrimitives (Int x) (Bool y) = undefined
-multiplyPrimitives (Int x) (String y) = undefined
-multiplyPrimitives (Bool x) (Int y) = undefined
-multiplyPrimitives (Bool x) (Bool y) = undefined
-multiplyPrimitives (Bool x) (String y) = undefined
-multiplyPrimitives (String x) (Int y) = undefined
-multiplyPrimitives (String x) (Bool y) = undefined
-multiplyPrimitives (String x) (String y) = undefined
+
+multiplyPrimitives (Int x) y = case y of
+                               (Int v) -> (Int (v * x))
+                               (Bool v) -> case v of
+                                           (True) -> (Int 0)
+                                           (False) -> (Int x)
+                               (String v) -> (Int (x * (length v)))
+
+multiplyPrimitives (Bool x) y = case y of
+                                (Bool v) -> case v of
+                                            (True) -> (Bool (not x))
+                                            (False) -> (Bool x)
+                                (Int v) -> case v of
+                                           0 -> (Bool (not x))
+                                           _ -> (Bool x)
+                                (String v) -> case v of
+                                              "" -> (Bool (not x))
+                                              _ -> (Bool x)
+
+multiplyPrimitives (String x) y = case y of
+                                  (Int v) -> case v of
+                                             0 -> (String [])
+                                             _ -> (String (x ++ show (multiplyPrimitives (String x) (Int (v - 1)))))
+
+                                  (Bool v) -> error "Multiplication of strings by bools is not currently supported"
+                                  (String v) -> case x of
+                                                [] -> (String [])
+                                                _ -> (String v)
