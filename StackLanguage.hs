@@ -11,6 +11,7 @@ import System.IO
 import Control.Monad
 import System.IO.Unsafe -- IO was never explained in class so I will do this.
 import Data.List.Split -- Install with cabal
+import Debug.Trace -- Try to replace this with IO later.
 
 ---------------------
 --    Constants    --
@@ -173,11 +174,34 @@ statement ex v1 v2 = case ex of
                                         (Raw Mul) -> multiplyPrimitives v1 v2
                                         (Raw Echo) -> String (show v1) -- this line threw an error
 
+encapsulated_print :: Primitive -> IO()
+encapsulated_print v = print v
+
+nop :: Stack -> Stack
+nop s = s
+
+-- This version of echo_cmd is popping; it removes what it prints from the stack.
+echo_cmd :: Stack -> Stack
+echo_cmd (Node lhs val rhs) = case val of
+    Left p -> lhs
+    Right ex -> (Node lhs val rhs) -- This is an error
+
+-- Pushes an item to a stack
+push :: Primitive -> Stack -> Stack
+push toAdd (Node lhs v rhs) = (Node lhs v (Node (Node lhs v rhs) (Left toAdd) rhs))
 
 -- Runs an entire program until there are no instructions left.
-run :: Prog -> Stack -> Prog
-run (x:xs) (Node lhs val rhs) = []
-run [] _ = [] -- End of program
+run :: Prog -> IO ()
+run p = consume p (Node Bottom (Left (String "Stack End")) Top)
+
+consume :: Prog -> Stack -> IO ()
+consume (x:xs) (Node lhs val rhs) = case x of
+    -- Expressions and outcomes --
+    Expr (Raw Echo) -> consume (xs) (echo_cmd (Node lhs val rhs))
+    -- Primitives --
+    Val value -> consume (xs) (push value (Node lhs val rhs))
+    
+consume [] s = print s -- End of program
 
 
 
