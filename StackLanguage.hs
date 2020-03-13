@@ -31,19 +31,24 @@ data Primitive = Int Int | Bool Bool | String String
 -- Control
 -- An instruction which defines how an expression will evaluate
 data Instr = Nop -- No operation
+    | Add
+    | Sub
+    | Mul
+    | Eq
+    | Set
     | Hold
     | Release
     | Lbl
     | End
     | Inv
-    
+
     -- IO
     | FileIn -- Parses the previous item on the stack
     | FileOut -- Writes the item two items ago to the fs using the filename
               -- at the previous item.
     | Echo -- Writes the previous item on the stack, then pops.
-    
-    
+
+
     -- The following stack operations are from forth.com
     | Swap -- Swaps the previous two items on the stack
     | Dup -- Duplicates the top item on the stack
@@ -89,14 +94,39 @@ type Prog = [ProgItem]
 -- TODO: Add a case allowing escape sequences to avoid commands.
 -- TODO: Allow escape characters for string literals
 -- TODO: Add a case to use flagged commands, eg in the following doctest:
--- 
+--
 -- >>> wordsToProg ["Echo&;"]
--- (Flagged Echo True True False) 
+-- (Flagged Echo True True False)
 --
 wordsToProg :: [String] -> Prog
-wordsToProg ("ECHO":rest) = [Expr (Raw Echo)] ++ (wordsToProg rest)
-wordsToProg (str:rest) = [Val (String str)] ++ (wordsToProg rest)
-wordsToProg [] = [] -- Base case: all words consumed
+--wordsToProg ("ECHO":rest) = [Expr (Raw Echo)] ++ (wordsToProg rest)
+--wordsToProg (str:rest) = [Val (String str)] ++ (wordsToProg rest)
+--wordsToProg [] = [] -- Base case: all words consumed
+
+wordsToProg s = case s of
+                ("ECHO":rest) -> [Expr (Raw Echo)] ++ (wordsToProg rest)
+                ("FILEIN":rest) -> [Expr (Raw FileIn)] ++ (wordsToProg rest)
+                ("FILEOUT":rest) -> [Expr (Raw FileOut)] ++ (wordsToProg rest)
+                ("+":rest) -> [Expr (Raw Add)] ++ (wordsToProg rest)
+                ("-":rest) -> [Expr (Raw Sub)] ++ (wordsToProg rest)
+                ("*":rest) -> [Expr (Raw Mul)] ++ (wordsToProg rest)
+                ("==":rest) -> [Expr (Raw Eq)] ++ (wordsToProg rest)
+                ("=":rest) -> [Expr (Raw Set)] ++ (wordsToProg rest)
+                ("SWAP":rest) -> [Expr (Raw Swap)] ++ (wordsToProg rest)
+                ("DUP":rest) -> [Expr (Raw Dup)] ++ (wordsToProg rest)
+                ("OVER":rest) -> [Expr (Raw Over)] ++ (wordsToProg rest)
+                ("ROT":rest) -> [Expr (Raw Rot)] ++ (wordsToProg rest)
+                ("DROP":rest) -> [Expr (Raw Drop)] ++ (wordsToProg rest)
+                ("True":rest) -> [Val (Bool True)] ++ (wordsToProg rest)
+                ("False":rest) -> [Val (Bool False)] ++ (wordsToProg rest)
+                ((f:str):rest) -> case (isDigit f) of
+                                (True) -> [Val (Int (read ([f] ++ str) :: Int))] ++ (wordsToProg rest)
+                                (False) -> case f of
+                                          '-' ->  [Val (Int (read ([f] ++ str) :: Int))] ++ (wordsToProg rest)
+                                          _ -> [Val (String ([f] ++ str))] ++ (wordsToProg rest)
+                (str:rest) -> [Val (String str)] ++ (wordsToProg rest)
+                [] -> [] -- Base case: all words consumed
+
 
 splitStrsToProg :: [String] -> Prog
 splitStrsToProg (a:b:xs) = (wordsToProg (words a)) ++ (wordsToProg [b])++ (splitStrsToProg xs)
@@ -105,7 +135,7 @@ splitStrsToProg (illegalLeft:illegalRight) = (strToProg illegalLeft) ++ (splitSt
 splitStrsToProg other = (wordsToProg other)
 
 
--- Converts a string spanning several lines (and commands) to 
+-- Converts a string spanning several lines (and commands) to
 -- Haskell "Control" data types.
 strToProg :: (String) -> Prog
 strToProg "" = []
@@ -121,10 +151,10 @@ strToProg other = case (splitOn "\"" other) of
 -- save some time on the final.
 loadFile :: String -> Prog
 loadFile filename = strToProg (unsafePerformIO . readFile $ filename)
-        
+
     --(IO error) -> []
     -- Add error patterns here, example:
-    -- IO Error -> Exec 0 [Nop] 
+    -- IO Error -> Exec 0 [Nop]
 
 
 
@@ -141,20 +171,27 @@ loadFile filename = strToProg (unsafePerformIO . readFile $ filename)
 -- Runs a statement in a program
 statement = undefined -- :: Expr -> Stack -> Stack
 
+
 -- Runs an entire program until there are no instructions left.
-run  = undefined -- :: Prog -> Prog
+run :: Prog -> Prog
+run p = undefined --case p of
+        --[] -> []
+        --x:y:z:xs -> case x of
+        --            Expr e -> expression e []
+
+
 
 
 -- Arithmetic --
 -- Arithmetic is not always communicative, even when it is with basic math.
 -- All three primitives are supported by all basic aritmetic operations
--- Specific relationships between primitives 
+-- Specific relationships between primitives
 
--- | This function adds two primitives together as per the language 
+-- | This function adds two primitives together as per the language
 -- specifications in the design document
 --
 -- Examples:
--- 
+--
 -- >>> addPrimitives (Int 2) (Int 4)
 -- (Int 6)
 --
@@ -166,7 +203,7 @@ run  = undefined -- :: Prog -> Prog
 --
 -- >>> addPrimitives (Int 2) (String "")
 -- (Int 2)
--- 
+--
 -- Note: We use the traditional "0 = true" in this language.
 --
 -- >>> addPrimitives (Bool False) (Int 0)
@@ -198,11 +235,11 @@ addPrimitives (String x) (Int y) = undefined
 addPrimitives (String x) (Bool y) = undefined
 addPrimitives (String x) (String y) = undefined
 
--- | This function subtracts two primitives together as per the language 
+-- | This function subtracts two primitives together as per the language
 -- specifications in the design document
 --
 -- Examples:
--- 
+--
 -- >>> subtractPrimitives (Int 2) (Int 4)
 -- (Int -2)
 --
@@ -242,44 +279,44 @@ subtractPrimitives (String x) (Int y) = undefined
 subtractPrimitives (String x) (Bool y) = undefined
 subtractPrimitives (String x) (String y) = undefined
 
--- | This function multiplies two primitives together as per the language 
+-- | This function multiplies two primitives together as per the language
 -- specifications in the design document
 --
 -- Examples:
--- 
+--
 -- >>> multiplyPrimitives (Int 3) (Int 4)
 -- (Int 12)
--- 
+--
 -- >>> multiplyPrimitives (Int 3) (String "asdf")
 -- (Int 12)
--- 
+--
 -- >>> multiplyPrimitives (Int 3) (String "10")
 -- (Int 30)
 --
 -- >>> multiplyPrimitives (Int 3) (Bool False)
 -- (Int 3)
--- 
+--
 -- >>> multiplyPrimitives (Int 3) (Bool True)
 -- (Int 0)
--- 
+--
 -- >>> multiplyPrimitives (Bool True) (Int 0)
 -- (Bool False)
--- 
+--
 -- >>> multiplyPrimitives (Bool True) (Bool True)
 -- (Bool False)
--- 
+--
 -- >>> multiplyPrimitives (Bool True) (String "")
 -- (Bool False)
 --
 -- >>> multiplyPrimitives (String "foobar") (Int 2)
 -- (String "foobarfoobar")
--- 
+--
 -- >>> multiplyPrimitives (String "f o o\tb a\tr") (Bool True)
 -- (String "foobar")
--- 
+--
 -- >>> multiplyPrimitives (String "abc") (String "def")
 -- (String "adbecf")
--- 
+--
 
 multiplyPrimitives :: Primitive -> Primitive -> Primitive
 multiplyPrimitives (Int x) (Int y) = undefined
