@@ -103,6 +103,7 @@ wordsToProg :: [String] -> Prog
 
 wordsToProg s = case s of
                 ("ECHO":rest) -> [Expr (Raw Echo)] ++ (wordsToProg rest)
+                ("ADD":rest) -> [Expr (Raw Add)] ++ (wordsToProg rest)
                 ("FILEIN":rest) -> [Expr (Raw FileIn)] ++ (wordsToProg rest)
                 ("FILEOUT":rest) -> [Expr (Raw FileOut)] ++ (wordsToProg rest)
                 ("+":rest) -> [Expr (Raw Add)] ++ (wordsToProg rest)
@@ -183,25 +184,42 @@ nop s = s
 -- This version of echo_cmd is popping; it removes what it prints from the stack.
 echo_cmd :: Stack -> Stack
 echo_cmd (Node lhs val rhs) = case val of
-    Left p -> lhs
+    Left p -> lhs -- You can't use print here or it taints the program with the IO monad
     Right ex -> (Node lhs val rhs) -- This is an error
+    
+add_cmd :: Stack -> Stack
+add_cmd (Node lhs (Left op1) (Node _ (Left op2) rhs)) =
+    (Node lhs (Left (addPrimitives op1 op2)) rhs)
+-- It is an error if this line is reached, because the stack did not have the necessary operands.
+add_cmd error_stack = error_stack
 
 -- Pushes an item to a stack
 push :: Primitive -> Stack -> Stack
-push toAdd (Node lhs v rhs) = (Node lhs v (Node (Node lhs v rhs) (Left toAdd) rhs))
+push toAdd prev = case prev of
+    (Node lhs v rhs) -> (Node lhs v (Node prev (Left toAdd) rhs))
+    _ -> (Node Bottom (Left toAdd) Top)
+
+formatStack :: Stack -> IO ()
+formatStack s = print s
 
 -- Runs an entire program until there are no instructions left.
 run :: Prog -> IO ()
-run p = consume p (Node Bottom (Left (String "Stack End")) Top)
+run p = consume p (Node Bottom (Left (Int (-1))) Top)
 
 consume :: Prog -> Stack -> IO ()
 consume (x:xs) (Node lhs val rhs) = case x of
     -- Expressions and outcomes --
     Expr (Raw Echo) -> consume (xs) (echo_cmd (Node lhs val rhs))
+    Expr (Raw Add) -> consume (xs) (add_cmd (Node lhs val rhs))
+    -- We would add semantics for the rest of our program here.
+    
     -- Primitives --
     Val value -> consume (xs) (push value (Node lhs val rhs))
+    -- if the following line runs, it means that the command
+    -- has not been implemented
+    _ -> consume (xs) (Node lhs val rhs)
     
-consume [] s = print s -- End of program
+consume [] s = formatStack s -- End of program
 
 
 
