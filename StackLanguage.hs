@@ -62,7 +62,8 @@ data Expr = Raw Instr -- Instruction by itself
     | Flagged Instr Bool Bool Bool -- Modified instruction (skip flag) (nopop self flag) (nopop operands flag)
     deriving(Show)
 
--- The stack is a linked list
+-- The stack is a doubly linked list behind the scenes, but
+-- this *shouldn't* be exposed to the language programmer.
 data Stack = Node Stack (Either Primitive Expr) Stack
     | Bottom
     | Top
@@ -186,7 +187,10 @@ echo_cmd :: Stack -> Stack
 echo_cmd (Node lhs val rhs) = case val of
     Left p -> lhs -- You can't use print here or it taints the program with the IO monad
     Right ex -> (Node lhs val rhs) -- This is an error
-    
+
+-- This is an example of what the semantic wrapper for an aritmetic operation
+-- would look like. Similar functions could be written for subtraction and 
+-- multiplication givenwh
 add_cmd :: Stack -> Stack
 add_cmd (Node lhs (Left op1) (Node _ (Left op2) rhs)) =
     (Node lhs (Left (addPrimitives op1 op2)) rhs)
@@ -198,6 +202,8 @@ push :: Primitive -> Stack -> Stack
 push toAdd prev = case prev of
     (Node lhs v rhs) -> (Node lhs v (Node prev (Left toAdd) rhs))
     _ -> (Node Bottom (Left toAdd) Top)
+-- Unfortunately, we couldn't figure out how to make a "reference" to the left hand
+-- side without simply copy-pasting the values
 
 formatStack :: Stack -> IO ()
 formatStack s = print s
